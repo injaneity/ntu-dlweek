@@ -1,17 +1,12 @@
-import logging
 from collections import defaultdict
-from threading import Event
 
 from atproto import AtUri, CAR, firehose_models, FirehoseSubscribeReposClient, models, parse_subscribe_repos_message
 from atproto.exceptions import FirehoseError
 
-# Define the record types we're interested in
+# We now only care about posts
 _INTERESTED_RECORDS = {
-    models.AppBskyFeedLike: models.ids.AppBskyFeedLike,
     models.AppBskyFeedPost: models.ids.AppBskyFeedPost,
-    models.AppBskyGraphFollow: models.ids.AppBskyGraphFollow,
 }
-
 
 def _get_ops_by_type(commit: models.ComAtprotoSyncSubscribeRepos.Commit) -> defaultdict:
     """
@@ -21,10 +16,10 @@ def _get_ops_by_type(commit: models.ComAtprotoSyncSubscribeRepos.Commit) -> defa
     car = CAR.from_bytes(commit.blocks)
     for op in commit.ops:
         if op.action == 'update':
-            # Ignore updates
-            continue
+            continue  # Ignore updates
 
         uri = AtUri.from_str(f'at://{commit.repo}/{op.path}')
+
         if op.action == 'create':
             if not op.cid:
                 continue
@@ -40,7 +35,10 @@ def _get_ops_by_type(commit: models.ComAtprotoSyncSubscribeRepos.Commit) -> defa
 
             for record_type, record_nsid in _INTERESTED_RECORDS.items():
                 if uri.collection == record_nsid and models.is_record_type(record, record_type):
-                    operation_by_type[record_nsid]['created'].append({'record': record, **create_info})
+                    operation_by_type[record_nsid]['created'].append({
+                        'record': record,
+                        **create_info
+                    })
                     break
 
         elif op.action == 'delete':
@@ -49,40 +47,41 @@ def _get_ops_by_type(commit: models.ComAtprotoSyncSubscribeRepos.Commit) -> defa
     return operation_by_type
 
 
-def run_first_50():
+def run_until_50_posts():
     """
-    Connect to the firehose, process the first 50 messages, and print the operations.
+    Connect to the firehose, process commits until a total of 50 posts have been collected,
+    then print the collected posts.
     """
-    collected_operations = []
-    message_count = 0
+    collected_posts = []  # List to store post data
+    total_posts = 0
 
-    # No stored state is used in this standalone version
-    params = None
-    client = FirehoseSubscribeReposClient(params)
+    client = FirehoseSubscribeReposClient(params=None)
 
     def on_message_handler(message: firehose_models.MessageFrame) -> None:
-        nonlocal message_count
-
-        if message_count >= 50:
-            client.stop()
-            return
+        nonlocal total_posts
 
         commit = parse_subscribe_repos_message(message)
         if not isinstance(commit, models.ComAtprotoSyncSubscribeRepos.Commit):
             return
-
         if not commit.blocks:
             return
 
         ops = _get_ops_by_type(commit)
-        collected_operations.append(ops)
-        message_count += 1
+        # Check if there are posts in this commit
+        post_ops = ops.get(models.ids.AppBskyFeedPost, {})
+        created_posts = post_ops.get('created', [])
+        num_posts = len(created_posts)
+        if num_posts:
+            collected_posts.extend(created_posts)
+            total_posts += num_posts
 
-        if message_count >= 50:
+        # Stop once we've collected at least 50 posts
+        if total_posts >= 50:
             client.stop()
-            print("Collected operations from the first 50 messages:")
-            for idx, op in enumerate(collected_operations, start=1):
-                print(f"Message {idx}: {dict(op)}")
+            print("Collected posts from the firehose (total posts: {})".format(total_posts))
+            for idx, post in enumerate(collected_posts[:50], start=1):
+                print(f"Post {idx}: {post}")
+            return
 
     try:
         client.start(on_message_handler)
@@ -90,4 +89,4 @@ def run_first_50():
         print(f"Firehose error: {e}")
 
 if __name__ == "__main__":
-    run_first_50()
+    run_until_50_posts()
