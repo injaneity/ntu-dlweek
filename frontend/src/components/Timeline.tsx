@@ -70,9 +70,9 @@ export function Timeline() {
 
   return (
     <div className="space-y-4">
-      <div>
+      {/* <div>
         <BlueskyLogin />
-      </div>
+      </div> */}
       <div className="flex justify-between items-center mb-4 sticky top-0 bg-white dark:bg-gray-900 z-10 py-2">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Latest Tweets</h2>
         <div className="flex items-center space-x-4">
@@ -88,13 +88,13 @@ export function Timeline() {
             />
             <span className="sr-only">Refresh</span>
           </Button>
-          <div className="h-8 w-8 rounded-full bg-blue-500 text-white flex items-center justify-center overflow-hidden">
+          {/* <div className="h-8 w-8 rounded-full bg-blue-500 text-white flex items-center justify-center overflow-hidden">
             <img
               src="/placeholder.svg?height=32&width=32"
               alt="Profile"
               className="w-full h-full object-cover"
             />
-          </div>
+          </div> */}
         </div>
       </div>
 

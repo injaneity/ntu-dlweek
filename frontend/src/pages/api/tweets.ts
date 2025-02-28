@@ -14,29 +14,7 @@ export type TweetType = {
 }
 
 // Module-level variable for mock persistence
-let tweets: TweetType[] = [
-  {
-    author: "Jane Smith",
-    record: {
-      created_at: "2025-03-01T12:00:00Z",
-      text: "Just launched my new website! Check it out at example.com #webdev #design",
-      langs: ["en"],
-    },
-    uri: "uri-1",
-    cid: "cid-1",
-  },
-  {
-    author: "Tech News",
-    record: {
-      created_at: "2025-03-01T11:50:00Z",
-      text: "Breaking: New AI model can generate realistic images from text descriptions. This could revolutionize content creation.",
-      langs: ["en"],
-    },
-    uri: "uri-2",
-    cid: "cid-2",
-  },
-]
-
+let tweets: TweetType[] = []
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     res.status(200).json(tweets)
