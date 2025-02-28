@@ -1,6 +1,6 @@
 import os
 import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments, EarlyStoppingCallback
 from datasets import load_dataset
 import numpy as np
 from sklearn.metrics import accuracy_score, f1_score
@@ -47,6 +47,7 @@ training_args = TrainingArguments(
     num_train_epochs=3,
     weight_decay=0.01,
     logging_dir="./logs",
+    save_steps=10000,
     save_total_limit=2,
     load_best_model_at_end=True,
 )
@@ -57,6 +58,7 @@ trainer = Trainer(
     train_dataset=tokenized_datasets["train"],
     eval_dataset=tokenized_datasets["test"],
     compute_metrics=compute_metrics,
+    # callbacks=[EarlyStoppingCallback(early_stopping_patience=2)], # uncomment this for early stopping if you wanna increase the num_epochs
 )
 
 def main():
