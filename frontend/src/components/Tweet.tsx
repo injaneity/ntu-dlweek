@@ -13,7 +13,7 @@ interface TweetProps {
     image?: string
     timestamp: string
     likes: number
-    retweets: number
+    retweets: numberZ
     replies: number
   }
 }

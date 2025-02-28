@@ -5,6 +5,7 @@ import { Tweet } from "./Tweet"
 import { Skeleton } from "./ui/skeleton"
 import { Button } from "./ui/button"
 import { RefreshCw } from "lucide-react"
+import BlueskyLogin from "./BlueskyLogin"
 
 // Sample tweet data
 const SAMPLE_TWEETS = [
@@ -138,6 +139,9 @@ export function Timeline() {
 
   return (
     <div className="space-y-4">
+      <div>
+        <BlueskyLogin />
+      </div>
       <div className="flex justify-between items-center mb-4 sticky top-0 bg-white dark:bg-gray-900 z-10 py-2">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Latest Tweets</h2>
         <div className="flex items-center space-x-4">
