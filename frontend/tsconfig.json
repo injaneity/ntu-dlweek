@@ -40,7 +40,7 @@
   "include": [
     "src",
     ".next/types/**/*.ts"
-  ],
+, "src/pages/api"  ],
   "references": [
     {
       "path": "./tsconfig.node.json"
