@@ -5,7 +5,6 @@ import { Tweet } from "./Tweet"
 import { Skeleton } from "./ui/skeleton"
 import { Button } from "./ui/button"
 import { RefreshCw } from "lucide-react"
-import BlueskyLogin from "./BlueskyLogin"
 import { TweetType } from "@/pages/api/tweets" // adjust path if needed
 
 export function Timeline() {
