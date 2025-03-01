@@ -12,7 +12,7 @@ export function Timeline() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const timelineRef = useRef<HTMLDivElement>(null)
-
+  
   // Utility function to fetch tweets from the API.
   async function fetchTweets(): Promise<TweetType[]> {
     try {
@@ -25,7 +25,7 @@ export function Timeline() {
     }
   }
 
-  // On mount, fetch tweets once.
+  // On mount, fetch tweets once and set body overflow to hidden
   useEffect(() => {
     async function initialFetch() {
       const data = await fetchTweets()
@@ -33,6 +33,14 @@ export function Timeline() {
       setLoading(false)
     }
     initialFetch()
+    
+    // Prevent body scrolling when interacting with the timeline
+    document.body.style.overflow = "hidden"
+    
+    return () => {
+      // Restore body scrolling when component unmounts
+      document.body.style.overflow = ""
+    }
   }, [])
 
   // Poll the API every 5 seconds to check for new tweets.
@@ -55,7 +63,12 @@ export function Timeline() {
   useEffect(() => {
     if (displayedTweets.length > 0 && timelineRef.current) {
       if (timelineRef.current.scrollTop < 50) {
-        timelineRef.current.scrollTo({ top: 0, behavior: "smooth" })
+        // Use direct scrollTop assignment rather than scrollTo for better containment
+        requestAnimationFrame(() => {
+          if (timelineRef.current) {
+            timelineRef.current.scrollTop = 0;
+          }
+        });
       }
     }
   }, [displayedTweets])
@@ -68,7 +81,7 @@ export function Timeline() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 h-screen flex flex-col overflow-hidden">
       {/* <div>
         <BlueskyLogin />
       </div> */}
@@ -99,7 +112,13 @@ export function Timeline() {
 
       <div
         ref={timelineRef}
-        className="space-y-4 max-h-[calc(100vh-80px)] overflow-y-auto pr-2"
+        className="space-y-4 flex-1 overflow-y-auto overflow-x-hidden pr-2 overscroll-contain"
+        style={{ 
+          WebkitOverflowScrolling: "touch", 
+          msOverflowStyle: "none", // For IE/Edge
+          scrollbarWidth: "thin" // For Firefox
+        }}
+        onWheel={(e) => e.stopPropagation()} // Prevent wheel events from propagating
       >
         {displayedTweets
           .filter(
@@ -113,7 +132,7 @@ export function Timeline() {
                 index === 0 ? "animate-slide-down" : ""
               }`}
             >
-              {/* We pass down a "censor" prop if tweet.label is 1 */}
+              {/* We pass down a "censor" prop if tweet.record.censor_value is 1 */}
               <Tweet tweet={tweet} censor={tweet.record.censor_value == 1} />
             </div>
           ))}
