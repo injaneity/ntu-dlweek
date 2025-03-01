@@ -1,6 +1,10 @@
 .DS_Store
 .env
 **/venv
+data/
+models/hatebert_finetuned/
+models/tuned_model/
+output/
 
 # dependencies
 **/node_modules
