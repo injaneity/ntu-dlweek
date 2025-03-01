@@ -5,13 +5,38 @@ from pyflink.datastream import StreamExecutionEnvironment, DataStream
 from pyflink.common.typeinfo import Types
 from better_profanity import profanity
 from langdetect import detect, LangDetectException
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
+# Initialize profanity filter and sentiment analyzer.
 profanity.load_censor_words()
+analyzer = SentimentIntensityAnalyzer()
+
+def sentiment_check(text):
+    """
+    Analyze the sentiment of the text using VADER and check for political keywords.
+    
+    A post is considered to have political or negative sentiment if:
+      - The text contains political-related keywords.
+      - The sentiment compound score is below a negative threshold (-0.2).
+    """
+    sentiment = analyzer.polarity_scores(text)
+    political_keywords = [
+        "politic", "government", "president", "senate", 
+        "political", "election", "policy", "politics"
+    ]
+    
+    # Check for political keywords.
+    if any(keyword in text.lower() for keyword in political_keywords):
+        return True
+    # Check for negative sentiment.
+    if sentiment["compound"] < -0.2:
+        return True
+    return False
 
 def filter_and_clean(post):
     """
-    Apply filtering criteria and remove unwanted fields.
-
+    Apply filtering criteria, remove unwanted fields, and add a sentiment-based censor_value.
+    
     Filtering criteria:
       - Drop posts with text length < 50 characters.
       - Drop posts if 'langs' is not provided or does not include 'en'.
@@ -19,8 +44,11 @@ def filter_and_clean(post):
       - Drop posts if the detected language is not English.
       - Drop posts if the text contains profanity.
     
-    For accepted posts, remove from record:
-      embed, entities, facets, reply, tags, py_type.
+    For accepted posts:
+      - Remove fields: embed, entities, facets, reply, tags, py_type.
+      - Add a new field 'censor_value' based on sentiment analysis:
+          * 1 if political or negative sentiment detected.
+          * 0 otherwise.
     """
     record = post.get('record', {})
     text = record.get('text', "")
@@ -42,6 +70,9 @@ def filter_and_clean(post):
     # Remove unwanted fields.
     for key in ['embed', 'entities', 'facets', 'reply', 'tags', 'py_type']:
         record.pop(key, None)
+    
+    # Assign censor_value based on sentiment analysis.
+    record['censor_value'] = 1 if sentiment_check(text) else 0
     post['record'] = record
 
     return post
