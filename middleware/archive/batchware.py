@@ -1,42 +1,20 @@
 import json
-import requests
 import sys
 from pyflink.datastream import StreamExecutionEnvironment, DataStream
 from pyflink.common.typeinfo import Types
 from better_profanity import profanity
 from langdetect import detect, LangDetectException
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-# Initialize profanity filter and sentiment analyzer.
+# Load profanity word list.
 profanity.load_censor_words()
-analyzer = SentimentIntensityAnalyzer()
 
-def sentiment_check(text):
-    """
-    Analyze the sentiment of the text using VADER and check for political keywords.
-    
-    A post is considered to have political or negative sentiment if:
-      - The text contains political-related keywords.
-      - The sentiment compound score is below a negative threshold (-0.2).
-    """
-    sentiment = analyzer.polarity_scores(text)
-    political_keywords = [
-        "politic", "government", "president", "senate", 
-        "political", "election", "policy", "politics"
-    ]
-    
-    # Check for political keywords.
-    if any(keyword in text.lower() for keyword in political_keywords):
-        return True
-    # Check for negative sentiment.
-    if sentiment["compound"] < -0.2:
-        return True
-    return False
+# Global list to store the first 50 accepted tweets.
+accepted_tweets = []
 
 def filter_and_clean(post):
     """
-    Apply filtering criteria, remove unwanted fields, and add a sentiment-based censor_value.
-    
+    Apply filtering criteria and remove unwanted fields.
+
     Filtering criteria:
       - Drop posts with text length < 50 characters.
       - Drop posts if 'langs' is not provided or does not include 'en'.
@@ -44,16 +22,13 @@ def filter_and_clean(post):
       - Drop posts if the detected language is not English.
       - Drop posts if the text contains profanity.
     
-    For accepted posts:
-      - Remove fields: embed, entities, facets, reply, tags, py_type.
-      - Add a new field 'censor_value' based on sentiment analysis:
-          * 1 if political or negative sentiment detected.
-          * 0 otherwise.
+    For accepted posts, remove from record:
+      embed, entities, facets, reply, tags, py_type.
     """
     record = post.get('record', {})
     text = record.get('text', "")
     langs = record.get('langs')
-    
+
     if not langs or 'en' not in langs or len(text) < 50 or record.get('reply') is not None:
         return None
 
@@ -61,6 +36,7 @@ def filter_and_clean(post):
         detected_lang = detect(text)
     except LangDetectException:
         return None
+
     if detected_lang != "en":
         return None
 
@@ -70,9 +46,6 @@ def filter_and_clean(post):
     # Remove unwanted fields.
     for key in ['embed', 'entities', 'facets', 'reply', 'tags', 'py_type']:
         record.pop(key, None)
-    
-    # Assign censor_value based on sentiment analysis.
-    record['censor_value'] = 1 if sentiment_check(text) else 0
     post['record'] = record
 
     return post
@@ -88,14 +61,21 @@ def parse_post(line: str):
     except Exception:
         return None
 
-def push_to_http(value):
-    """Side-effect function to push a tweet to a REST endpoint."""
-    try:
-        # Replace the URL with your actual API endpoint.
-        requests.post("http://localhost:3000/api/tweets", json={'tweet': value})
-    except Exception as e:
-        print("HTTP push error:", e)
-    return value
+def collect_and_maybe_exit(tweet_json_str):
+    """
+    Append each accepted tweet (as a JSON string) to a global list.
+    When the list reaches 50 items, write them to a JSON file and exit.
+    """
+    global accepted_tweets
+    accepted_tweets.append(tweet_json_str)
+    print()
+    print(len(accepted_tweets))
+    print()
+    if len(accepted_tweets) >= 50:
+        with open("tweets.json", "w") as f:
+            json.dump(accepted_tweets, f, indent=2)
+        sys.exit(0)
+    return tweet_json_str
 
 def main():
     env = StreamExecutionEnvironment.get_execution_environment()
@@ -112,12 +92,12 @@ def main():
     processed_posts = valid_posts.map(filter_and_clean, output_type=Types.MAP(Types.STRING(), Types.PICKLED_BYTE_ARRAY()))
     final_posts = processed_posts.filter(lambda post: post is not None)
 
-    # Convert accepted posts to JSON.
+    # Convert accepted posts to JSON strings.
     json_posts = final_posts.map(lambda post: to_json(post), output_type=Types.STRING())
-    
-    # Call the REST API for each tweet (side-effect) and then print.
-    pushed_posts = json_posts.map(push_to_http, output_type=Types.STRING())
-    pushed_posts.print()
+
+    # Collect accepted tweets and write to file when 50 have been received.
+    collected_posts = json_posts.map(collect_and_maybe_exit, output_type=Types.STRING())
+    collected_posts.print()
 
     env.execute("Bluesky Firehose English Posts Flink Job")
 
