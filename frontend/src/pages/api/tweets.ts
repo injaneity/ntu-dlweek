@@ -6,8 +6,8 @@ export type TweetType = {
   record: {
     created_at: string
     text: string
-    labels?: any
     langs: string[]
+    censor_value: number
   }
   uri: string
   cid: string

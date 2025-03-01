@@ -113,7 +113,8 @@ export function Timeline() {
                 index === 0 ? "animate-slide-down" : ""
               }`}
             >
-              <Tweet tweet={tweet} />
+              {/* We pass down a "censor" prop if tweet.label is 1 */}
+              <Tweet tweet={tweet} censor={tweet.record.censor_value == 1} />
             </div>
           ))}
 

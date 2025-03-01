@@ -16,13 +16,11 @@ interface TweetProps {
     record: {
       created_at: string;
       text: string;
-      labels?: any;
       langs: string[];
+      censor_value: number;
     };
     author: string; // e.g. a DID
-    label?: number;
   };
-  censor?: boolean;
 }
 
 function getRelativeTime(timestamp: string): string {
@@ -31,34 +29,31 @@ function getRelativeTime(timestamp: string): string {
   const diffInSeconds = Math.floor((now - tweetTime) / 1000);
 
   if (diffInSeconds < 60) {
-    return `${diffInSeconds} second${
-      diffInSeconds !== 1 ? "s" : ""
-    } ago`;
+    return `${diffInSeconds} second${diffInSeconds !== 1 ? "s" : ""} ago`;
   }
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) {
-    return `${diffInMinutes} minute${
-      diffInMinutes !== 1 ? "s" : ""
-    } ago`;
+    return `${diffInMinutes} minute${diffInMinutes !== 1 ? "s" : ""} ago`;
   }
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) {
-    return `${diffInHours} hour${
-      diffInHours !== 1 ? "s" : ""
-    } ago`;
+    return `${diffInHours} hour${diffInHours !== 1 ? "s" : ""} ago`;
   }
   const diffInDays = Math.floor(diffInHours / 24);
-  return `${diffInDays} day${
-    diffInDays !== 1 ? "s" : ""
-  } ago`;
+  return `${diffInDays} day${diffInDays !== 1 ? "s" : ""} ago`;
 }
 
-export function Tweet({ tweet, censor = false }: TweetProps) {
+export function Tweet({ tweet }: TweetProps) {
   const text = tweet.record?.text || "No content";
   const rawTimestamp = tweet.record?.created_at;
   const timestamp = rawTimestamp
     ? getRelativeTime(rawTimestamp)
     : "unknown time";
+
+  // Initialize internal state based on censor_value.
+  const [isBlurred, setIsBlurred] = useState(
+    tweet.record?.censor_value === 1
+  );
 
   // Derive the author name by stripping "did:plc:" from the DID.
   const didPrefix = "did:plc:";
@@ -69,7 +64,6 @@ export function Tweet({ tweet, censor = false }: TweetProps) {
   const authorHandle = "@anonymous";
 
   // Random avatar from the internet using Picsum Photos.
-  // We generate a random seed once so that the URL remains consistent for this component instance.
   const [randomAvatar, setRandomAvatar] = useState<string>("");
 
   useEffect(() => {
@@ -77,8 +71,15 @@ export function Tweet({ tweet, censor = false }: TweetProps) {
     setRandomAvatar(`https://picsum.photos/seed/${randomSeed}/48`);
   }, []);
 
-  // Use the random avatar as no profile fetch is done.
   const avatar = randomAvatar || "/placeholder.svg";
+
+  // Handler to remove blur on click.
+  const handleUncensor = () => {
+    console.log("handleUncensor clicked");
+    if (isBlurred) {
+      setIsBlurred(false);
+    }
+  };
 
   return (
     <div
@@ -101,18 +102,15 @@ export function Tweet({ tweet, censor = false }: TweetProps) {
             <p className="text-gray-500 dark:text-gray-400 truncate">
               {authorHandle}
             </p>
-            <span className="text-gray-500 dark:text-gray-400">
-              ·
-            </span>
-            <p className="text-gray-500 dark:text-gray-400">
-              {timestamp}
-            </p>
+            <span className="text-gray-500 dark:text-gray-400">·</span>
+            <p className="text-gray-500 dark:text-gray-400">{timestamp}</p>
           </div>
           <p
+            onClick={handleUncensor}
             className={`mt-1 text-gray-900 dark:text-white whitespace-pre-wrap ${
-              censor ? "blur-sm" : ""
+              isBlurred ? "blur-sm cursor-pointer" : ""
             }`}
-            title={censor ? "Censored" : undefined}
+            title={isBlurred ? "Censored. Click to reveal." : undefined}
           >
             {text}
           </p>
