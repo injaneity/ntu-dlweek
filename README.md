@@ -44,7 +44,7 @@ DeBERTa separates content and positional information, allowing the model to hand
 
 2. Optimised hyperparameter tuning using [Optuna](https://optuna.org/), if compute and time constraints allow.
 
-3. Integration of interpretability through Masked Rationale Prediction (MRP) as an intermediary, so that the model's classifications of whether something is a hate speech or not can be [explained clearly to the users](https://aclanthology.org/2022.coling-1.577.pdf#:~:text=speech,and%20implicit%20hate%20speech%20detection).
+3. Integration of interpretability through [Masked Rationale Prediction (MRP)](https://aclanthology.org/2022.coling-1.577.pdf#:~:text=speech,and%20implicit%20hate%20speech%20detection) as an intermediary, so that the model's classifications of whether something is a hate speech or not can be explained clearly to the users.
 
 ## ATProto
 ATProto is an open-source protocol built by the engineers over at Bluesky, which aims to democratise user data and provide access to all. We make use of Bluesky's own relay to quickly pull large volumes of user posts, as a proof of concept for Clearsky's ability to filter in real time. Posts gathered from the Bluesky relay (or Firehose) are not meaningfully sorted or categorised, and appear on the frontend in real time.
